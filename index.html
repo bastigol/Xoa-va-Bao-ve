@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xóa và Bảo vệ</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app {
+            width: 90%;
+            max-width: 500px;
+            background: #1e293b;
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #475569;
+            border-radius: 18px;
+            padding: 35px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .choose-btn {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            padding: 13px 22px;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .file-info {
+            display: none;
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            word-break: break-word;
+        }
+
+        .actions {
+            display: none;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .delete {
+            background: #dc2626;
+            color: white;
+        }
+
+        .protect {
+            background: #16a34a;
+            color: white;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            color: #38bdf8;
+            min-height: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <h1>🛡️ Xóa và Bảo vệ</h1>
+
+    <div class="subtitle">
+        Quản lý và bảo vệ dữ liệu của bạn
+    </div>
+
+    <div class="drop-zone">
+
+        <div class="icon">📁</div>
+
+        <div>
+            Chọn một tệp để bắt đầu
+        </div>
+
+        <label class="choose-btn">
+            Chọn tệp
+            <input type="file" id="fileInput">
+        </label>
+
+        <div class="file-info" id="fileInfo"></div>
+
+    </div>
+
+    <div class="actions" id="actions">
+
+        <button class="delete" onclick="deleteFile()">
+            🗑️ Xóa
+        </button>
+
+        <button class="protect" onclick="protectFile()">
+            🔒 Bảo vệ
+        </button>
+
+    </div>
+
+    <div class="status" id="status"></div>
+<button onclick="toggleBuffer()" style="margin-top:15px;">
+    🗑️ Kho đệm
+</button>
+
+<div id="bufferSection" style="display:none; margin-top:20px;">
+    <h2>🗑️ Kho đệm</h2> 
+  <div style="margin-bottom:15px;">
+
+    <input
+        type="text"
+        id="bufferSearch"
+        placeholder="🔍 Tìm trong Kho đệm..."
+        oninput="loadBuffer()"
+        style="
+            width:100%;
+            padding:12px;
+            border-radius:10px;
+            border:1px solid #ccc;
+            box-sizing:border-box;
+        "
+    >
+
+</div>
+
+<div style="margin-bottom:15px;">
+
+    <label for="bufferDate">
+        📅 Ngày xóa
+    </label>
+
+    <input
+        type="date"
+        id="bufferDate"
+        onchange="loadBuffer()"
+        style="
+            padding:10px;
+            margin-left:8px;
+            border-radius:8px;
+            border:1px solid #ccc;
+        "
+    >
+
+    <button
+        onclick="
+            document.getElementById('bufferDate').value='';
+            loadBuffer();
+        "
+        style="margin-left:8px;"
+    >
+        Tất cả
+    </button>
+
+</div>  <div id="bufferList"></div>
+</div>
+</div>
+
+
+<script>
+
+const fileInput = document.getElementById("fileInput");
+const fileInfo = document.getElementById("fileInfo");
+const actions = document.getElementById("actions");
+const status = document.getElementById("status");
+
+fileInput.addEventListener("change", function () {
+
+    const file = this.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    fileInfo.style.display = "block";
+
+    fileInfo.innerHTML =
+        "<strong>Tệp đã chọn:</strong><br>" +
+        file.name +
+        "<br><small>" +
+        formatSize(file.size) +
+        "</small>";
+
+    actions.style.display = "flex";
+
+    status.textContent = "Sẵn sàng xử lý tệp.";
+
+});
+
+
+function formatSize(bytes) {
+
+    if (bytes < 1024) {
+        return bytes + " B";
+    }
+
+    if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + " KB";
+    }
+
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+
+async function deleteFile() {
+    const input = document.getElementById("fileInput");
+
+    if (!input.files || input.files.length === 0) {
+        status.textContent = "⚠️ Chưa chọn tệp.";
+        return;
+    }
+
+    const file = input.files[0];
+
+    const confirmed = confirm(
+        "Xác nhận xóa tệp?\n\n" +
+        "Tên: " + file.name + "\n" +
+        "Kích thước: " + formatSize(file.size) + "\n\n" +
+        "Tệp sẽ được chuyển vào Kho đệm."
+    );
+
+    if (!confirmed) {
+        status.textContent = "↩️ Đã hủy thao tác xóa.";
+        return;
+    }
+
+    const request = indexedDB.open("XoaBaoVeDB", 1);
+
+    request.onupgradeneeded = function (event) {
+        const db = event.target.result;
+
+        if (!db.objectStoreNames.contains("buffer")) {
+            db.createObjectStore("buffer", {
+                keyPath: "id"
+            });
+        }
+    };
+
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+
+        const transaction = db.transaction(
+            ["buffer"],
+            "readwrite"
+        );
+
+        const store = transaction.objectStore("buffer");
+
+        const item = {
+            id: Date.now(),
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            deletedAt: new Date().toISOString(),
+            file: file
+        };
+
+        store.add(item);
+
+        transaction.oncomplete = function () {
+            status.textContent =
+                "🗑️ Đã chuyển tệp vào Kho đệm.";
+
+            input.value = "";
+        };
+    };
+
+    request.onerror = function () {
+        status.textContent =
+            "❌ Không thể tạo Kho đệm.";
+    };
+}
+
+function protectFile() {
+
+    status.textContent =
+        "🔒 Đã yêu cầu bảo vệ tệp.";
+
+}
+function chooseFolder() {
+    const input = document.getElementById("fileInput");
+
+    input.onchange = function () {
+        if (input.files.length > 0) {
+            const file = input.files[0];
+
+            status.textContent =
+                "📁 Đã chọn: " + file.name;
+        }
+    };
+
+    input.click();
+}function toggleBuffer() {
+    const section = document.getElementById("bufferSection");
+
+    if (section.style.display === "none") {
+        section.style.display = "block";
+        loadBuffer();
+    } else {
+        section.style.display = "none";
+    }
+}
+
+function loadBuffer() {
+    const request = indexedDB.open("XoaBaoVeDB", 1);
+
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+
+        if (!db.objectStoreNames.contains("buffer")) {
+            return;
+        }
+
+        const transaction = db.transaction(["buffer"], "readonly");
+        const store = transaction.objectStore("buffer");
+        const getAllRequest = store.getAll();
+
+        getAllRequest.onsuccess = function () {
+            const files = getAllRequest.result;
+            const list = document.getElementById("bufferList");
+
+            list.innerHTML = "";
+
+            const searchInput = document.getElementById("bufferSearch");
+            const dateInput = document.getElementById("bufferDate");
+
+            const search = searchInput
+                ? searchInput.value.trim().toLowerCase()
+                : "";
+
+            const selectedDate = dateInput
+                ? dateInput.value
+                : "";
+
+            const filteredFiles = files.filter(function (item) {
+
+                const matchSearch =
+                    !search ||
+                    item.name.toLowerCase().includes(search);
+
+                let matchDate = true;
+
+                if (selectedDate) {
+                    const itemDate = new Date(item.deletedAt);
+
+                    const year = itemDate.getFullYear();
+                    const month = String(
+                        itemDate.getMonth() + 1
+                    ).padStart(2, "0");
+                    const day = String(
+                        itemDate.getDate()
+                    ).padStart(2, "0");
+
+                    const itemDateString =
+                        year + "-" + month + "-" + day;
+
+                    matchDate =
+                        itemDateString === selectedDate;
+                }
+
+                return matchSearch && matchDate;
+            });
+
+            if (filteredFiles.length === 0) {
+                list.innerHTML =
+                    "<p>Kho đệm đang trống.</p>";
+                return;
+            }
+
+            filteredFiles.reverse().forEach(function (item) {
+
+                const div = document.createElement("div");
+
+                div.style.padding = "15px";
+                div.style.marginBottom = "10px";
+                div.style.borderRadius = "12px";
+                div.style.background =
+                    "rgba(255,255,255,0.08)";
+
+                const date =
+                    new Date(item.deletedAt)
+                    .toLocaleString("vi-VN");
+
+                div.innerHTML = `
+                    <strong>📄 ${item.name}</strong>
+                    <br>
+                    <small>
+                        ${formatSize(item.size)}
+                        · ${date}
+                    </small>
+                    <br><br>
+
+                    <button onclick="restoreFile(${item.id})">
+                        🔄 Khôi phục
+                    </button>
+
+                    <button onclick="permanentlyDelete(${item.id})">
+                        🔥 Xóa vĩnh viễn
+                    </button>
+                `;
+
+                list.appendChild(div);
+            });
+        };
+    };
+}
+function restoreFile(id) {
+    const request = indexedDB.open("XoaBaoVeDB", 1);
+
+    request.onsuccess = function (event) {
+        const db = event.target.result;
+
+        const transaction =
+            db.transaction(["buffer"], "readwrite");
+
+        const store =
+            transaction.objectStore("buffer");
+
+        const getRequest = store.get(id);
+
+        getRequest.onsuccess = function () {
+            const item = getRequest.result;
+
+            if (!item) return;
+
+            const url =
+                URL.createObjectURL(item.file);
+
+            const link =
+                document.createElement("a");
+
+            link.href = url;
+            link.download = item.name;
+
+            link.click();
+
+            URL.revokeObjectURL(url);
+
+            // Khôi phục xong → xóa khỏi Kho đệm
+            store.delete(id);
+
+            status.textContent =
+                "↩️ Đã khôi phục: " + item.name;
+
+            // Cập nhật lại danh sách Kho đệm
+            setTimeout(function () {
+                loadBuffer();
+            }, 100);
+        };
+    };
+}
+
+function permanentlyDelete(id) {
+
+    if (!confirm("Xóa vĩnh viễn tệp này?")) {
+        return;
+    }
+
+    const request =
+        indexedDB.open("XoaBaoVeDB", 1);
+
+    request.onsuccess = function (event) {
+
+        const db = event.target.result;
+
+        const transaction =
+            db.transaction(["buffer"], "readwrite");
+
+        const store =
+            transaction.objectStore("buffer");
+
+        store.delete(id);
+
+        transaction.oncomplete = function () {
+
+            status.textContent =
+                "🔥 Đã xóa vĩnh viễn.";
+
+            loadBuffer();
+        };
+    };
+}
+</script>
+
+</body>
+</html>
